@@ -2,6 +2,8 @@ name: Build driver APK
 on:
   push:
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,3 +22,11 @@ jobs:
         with:
           name: RoadAssistDriver-apk
           path: app/build/outputs/apk/release/*.apk
+      - name: Publish APK as a download (Releases → latest)
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/*.apk RoadAssistDriver.apk
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest RoadAssistDriver.apk --title "RoadAssist Driver (latest build)" --notes "Install on the driver's Android phone. Build ${{ github.run_number }}." --latest
