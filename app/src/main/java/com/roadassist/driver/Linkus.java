@@ -53,32 +53,64 @@ public final class Linkus {
             if (ready()) { busy = false; set("Connected · ext " + res.optString("ext")); return; }
             String sign = res.isNull("sign") ? "" : res.optString("sign", "");
             if (sign.isEmpty()) { busy = false; set("Calls not set up: " + res.optString("sign_error", "no Linkus SDK signature")); return; }
-            JSONObject l = res.optJSONObject("linkus");
-            String host = l != null ? l.optString("host", "") : "";
-            int port = l != null ? l.optInt("port", 8111) : 8111;
-            String lhost = l != null ? l.optString("local_host", "") : "";
-            int lport = l != null ? l.optInt("local_port", 8111) : 8111;
             final String ext = res.optString("ext");
-            try {
-                YlsLoginManager.getInstance().loginBlock(app, ext, sign, lhost, lport, host, port, new RequestCallback<Boolean>() {
-                    @Override public void onSuccess(Boolean ok) {
-                        busy = false;
-                        set("Connected · ext " + ext);
-                    }
-                    @Override public void onFailed(int code) {
-                        busy = false;
-                        set("PBX login failed (" + code + ") " + reason(code));
-                    }
-                    @Override public void onException(Throwable e) {
-                        busy = false;
-                        set("PBX login error: " + e.getMessage());
-                    }
-                });
-            } catch (Throwable t) {
-                busy = false;
-                set("PBX login error: " + t.getMessage());
+            final java.util.List<String[]> targets = new java.util.ArrayList<>();
+            org.json.JSONArray ta = res.optJSONArray("targets");
+            if (ta != null) for (int i = 0; i < ta.length(); i++) {
+                JSONObject t = ta.optJSONObject(i);
+                if (t != null) targets.add(new String[]{t.optString("host"), String.valueOf(t.optInt("port", 8111))});
             }
+            if (targets.isEmpty()) {
+                JSONObject l = res.optJSONObject("linkus");
+                targets.add(new String[]{l != null ? l.optString("host", "") : "", String.valueOf(l != null ? l.optInt("port", 8111) : 8111)});
+            }
+            tryTarget(app, ext, sign, targets, 0, new StringBuilder());
         });
+    }
+
+    /** Try each PBX address in turn until one logs in; every result is reported to the CRM log. */
+    private static void tryTarget(Context app, String ext, String sign, java.util.List<String[]> targets, int i, StringBuilder fails) {
+        if (i >= targets.size()) {
+            busy = false;
+            set("PBX login failed: " + fails);
+            return;
+        }
+        final String host = targets.get(i)[0];
+        final int port = Integer.parseInt(targets.get(i)[1]);
+        final String where = host + ":" + port;
+        set("Connecting to PBX (" + where + ")…");
+        try {
+            YlsLoginManager.getInstance().loginBlock(app, ext, sign, "", port, host, port, new RequestCallback<Boolean>() {
+                @Override public void onSuccess(Boolean ok) {
+                    busy = false;
+                    log(app, "login OK via " + where);
+                    set("Connected · ext " + ext);
+                }
+                @Override public void onFailed(int code) {
+                    String m = "code " + code + " @ " + where + " " + reason(code);
+                    log(app, "login failed: " + m);
+                    fails.append(fails.length() > 0 ? " | " : "").append(code).append(" @ ").append(where);
+                    MAIN.post(() -> tryTarget(app, ext, sign, targets, i + 1, fails));
+                }
+                @Override public void onException(Throwable e) {
+                    String m = e.getClass().getSimpleName() + ": " + e.getMessage() + " @ " + where;
+                    log(app, "login exception: " + m);
+                    fails.append(fails.length() > 0 ? " | " : "").append("error @ ").append(where);
+                    MAIN.post(() -> tryTarget(app, ext, sign, targets, i + 1, fails));
+                }
+            });
+        } catch (Throwable t) {
+            log(app, "login crash: " + t.getClass().getSimpleName() + ": " + t.getMessage() + " @ " + where);
+            fails.append(fails.length() > 0 ? " | " : "").append("crash @ ").append(where);
+            MAIN.post(() -> tryTarget(app, ext, sign, targets, i + 1, fails));
+        }
+    }
+
+    /** Send a diagnostic line to the CRM (Driver app log page). */
+    public static void log(Context ctx, String text) {
+        try {
+            Api.run(ctx, "POST", "/app/log", new JSONObject().put("text", "[" + android.os.Build.MODEL + "] " + text), (r, e) -> {});
+        } catch (Exception ignored) {}
     }
 
     static String reason(int code) {

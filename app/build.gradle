@@ -7,8 +7,8 @@ android {
         applicationId "com.roadassist.driver"
         minSdk 26
         targetSdk 33
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
         ndk { abiFilters "armeabi-v7a", "arm64-v8a" }
         // CRM address the app talks to (driver can change it on the pairing screen)
         buildConfigField "String", "CRM_URL", '"https://roadassist-crm.bosesirsendu355.workers.dev"'
