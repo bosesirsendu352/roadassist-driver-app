@@ -16,8 +16,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.yeastar.linkus.service.call.YlsCallManager;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -85,7 +83,7 @@ public class JobActivity extends Activity {
         Button callBtn = Ui.button(this, "📞  Call customer", Ui.TEAL, null);
         callBtn.setOnClickListener(v -> callCustomer(callBtn));
         call.addView(callBtn);
-        call.addView(Ui.text(this, "Goes through the company PBX. You never see the customer's number and they don't see yours.", 13, Ui.MUTED, false));
+        call.addView(Ui.text(this, "Your phone rings from the company number, then the customer is connected. You never see their number and they don't see yours.", 13, Ui.MUTED, false));
         body.addView(call);
 
         // ---- Location ----
@@ -148,25 +146,22 @@ public class JobActivity extends Activity {
     }
 
     private void callCustomer(Button btn) {
-        if (Linkus.inCall()) { App.openCallScreen(this); return; }
-        if (!Linkus.ready()) {
-            Linkus.ensureLogin(this);
-            Toast.makeText(this, "Not connected to the PBX yet: " + Linkus.state(), Toast.LENGTH_LONG).show();
-            return;
-        }
         btn.setEnabled(false);
         btn.setText("Connecting…");
         JSONObject req = new JSONObject();
         try { req.put("ticket", job.optInt("id")); } catch (Exception ignored) {}
-        // 1) Tell the CRM which customer we want (it keeps the number). 2) Dial the PBX masked-call code.
+        // The CRM asks the PBX to ring this phone first, then the customer. Both see only the company number.
         Api.run(this, "POST", "/app/call", req, (res, err) -> {
             btn.setEnabled(true);
             btn.setText("📞  Call customer");
-            if (err != null) { Toast.makeText(this, err, Toast.LENGTH_LONG).show(); return; }
-            String dial = res.optString("dial");
-            CallActivity.label = "Job #" + job.optInt("id") + " · Customer " + job.optString("customer");
-            YlsCallManager.getInstance().makeNewCall(dial, true);
-            App.openCallScreen(this);
+            if (err != null) {
+                new android.app.AlertDialog.Builder(this).setTitle("Call not started").setMessage(err).setPositiveButton("OK", null).show();
+                return;
+            }
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("📞 Your phone will ring now")
+                    .setMessage("Answer the call from the company number. You'll be connected to the customer.\n\nNeither of you sees the other's number.")
+                    .setPositiveButton("OK", null).show();
         });
     }
 

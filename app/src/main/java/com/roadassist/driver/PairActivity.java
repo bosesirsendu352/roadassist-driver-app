@@ -68,7 +68,6 @@ public class PairActivity extends Activity {
                     go.setEnabled(true);
                     if (fe != null) { err.setText(fe); return; }
                     Prefs.savePairing(this, base, fr.optString("token"), fr.optString("name"), fr.optString("ext"));
-                    Linkus.ensureLogin(this);
                     startActivity(new Intent(this, MainActivity.class));
                     finish();
                 });
