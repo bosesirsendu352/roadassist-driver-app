@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
         LinearLayout top = Ui.row(this);
         LinearLayout who = Ui.column(this);
         who.addView(Ui.text(this, "Hi " + Prefs.name(this), 24, Ui.INK, true));
-        linkusState = Ui.text(this, "Driver · " + Prefs.ext(this), 13, Ui.MUTED, false);
+        linkusState = Ui.text(this, Linkus.state(), 13, Ui.MUTED, false);
         who.addView(linkusState);
         top.addView(who, new LinearLayout.LayoutParams(0, -2, 1));
         TextView menu = Ui.text(this, "⋮", 26, Ui.MUTED, true);
@@ -51,7 +51,7 @@ public class MainActivity extends Activity {
         menu.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle("Driver " + Prefs.name(this) + " · ext " + Prefs.ext(this))
                 .setItems(new String[]{"Refresh", "Unpair this phone"}, (d, which) -> {
-                    if (which == 0) { load(); }
+                    if (which == 0) { Linkus.ensureLogin(this); load(); }
                     else {
                         stopService(new Intent(this, DutyService.class));
                         Prefs.clear(this);
@@ -81,6 +81,9 @@ public class MainActivity extends Activity {
 
     private void askPermissions() {
         List<String> need = new ArrayList<>();
+        need.add(android.Manifest.permission.RECORD_AUDIO);
+        need.add(android.Manifest.permission.READ_PHONE_STATE);
+        if (Build.VERSION.SDK_INT >= 31) need.add("android.permission.BLUETOOTH_CONNECT");
         if (Build.VERSION.SDK_INT >= 33) need.add("android.permission.POST_NOTIFICATIONS");
         List<String> ask = new ArrayList<>();
         for (String s : need) if (checkSelfPermission(s) != PackageManager.PERMISSION_GRANTED) ask.add(s);
@@ -91,6 +94,9 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (list == null) return;
+        Linkus.setListener(st -> linkusState.setText(st));
+        linkusState.setText(Linkus.state());
+        Linkus.ensureLogin(this);
         h.removeCallbacks(tick);
         h.post(tick);
     }
@@ -99,6 +105,7 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         h.removeCallbacks(tick);
+        Linkus.setListener(null);
     }
 
     private void load() {

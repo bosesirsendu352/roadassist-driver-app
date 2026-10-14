@@ -83,7 +83,7 @@ public class JobActivity extends Activity {
         Button callBtn = Ui.button(this, "📞  Call customer", Ui.TEAL, null);
         callBtn.setOnClickListener(v -> callCustomer(callBtn));
         call.addView(callBtn);
-        call.addView(Ui.text(this, "Your phone rings from the company number, then the customer is connected. You never see their number and they don't see yours.", 13, Ui.MUTED, false));
+        call.addView(Ui.text(this, "The call goes through the company PBX. The customer sees the company number and you never see theirs.", 13, Ui.MUTED, false));
         body.addView(call);
 
         // ---- Location ----
@@ -146,11 +146,12 @@ public class JobActivity extends Activity {
     }
 
     private void callCustomer(Button btn) {
+        if (Linkus.inCall()) { App.openCallScreen(this); return; }
+        final boolean voip = Linkus.ready();
         btn.setEnabled(false);
         btn.setText("Connecting…");
         JSONObject req = new JSONObject();
-        try { req.put("ticket", job.optInt("id")); } catch (Exception ignored) {}
-        // The CRM asks the PBX to ring this phone first, then the customer. Both see only the company number.
+        try { req.put("ticket", job.optInt("id")); if (voip) req.put("via", "app"); } catch (Exception ignored) {}
         Api.run(this, "POST", "/app/call", req, (res, err) -> {
             btn.setEnabled(true);
             btn.setText("📞  Call customer");
@@ -158,9 +159,16 @@ public class JobActivity extends Activity {
                 new android.app.AlertDialog.Builder(this).setTitle("Call not started").setMessage(err).setPositiveButton("OK", null).show();
                 return;
             }
+            if (voip && !res.optString("dial").isEmpty()) {
+                // In-app call as the driver's Yeastar extension -> PBX masked-call flow -> customer (company number shown)
+                CallActivity.label = "Job #" + job.optInt("id") + " · Customer " + job.optString("customer");
+                com.yeastar.linkus.service.call.YlsCallManager.getInstance().makeNewCall(res.optString("dial"), true);
+                App.openCallScreen(this);
+                return;
+            }
             new android.app.AlertDialog.Builder(this)
                     .setTitle("📞 Your phone will ring now")
-                    .setMessage("Answer the call from the company number. You'll be connected to the customer.\n\nNeither of you sees the other's number.")
+                    .setMessage("The app isn't connected to the PBX right now, so the company line is calling your mobile instead. Answer it to be connected to the customer.")
                     .setPositiveButton("OK", null).show();
         });
     }

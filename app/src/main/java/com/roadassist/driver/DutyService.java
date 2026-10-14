@@ -39,6 +39,7 @@ public class DutyService extends Service {
 
     private void check() {
         if (!Prefs.paired(this)) { stopSelf(); return; }
+        if (!Linkus.inCall()) Linkus.ensureLogin(this);
         Api.run(this, "GET", "/app/jobs", null, (res, err) -> {
             if (err != null || res == null) return;
             JSONArray a = res.optJSONArray("jobs");

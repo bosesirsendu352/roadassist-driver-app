@@ -36,7 +36,7 @@ public class DialActivity extends Activity {
         back.setOnClickListener(v -> finish());
         root.addView(back);
         root.addView(Ui.text(this, "Dialpad", 24, Ui.INK, true));
-        root.addView(Ui.text(this, "Company extensions are called through the company line: your phone rings first.", 13, Ui.MUTED, false));
+        root.addView(Ui.text(this, "Calls go through the company PBX as your extension. Emergency numbers use your phone directly.", 13, Ui.MUTED, false));
 
         display = Ui.text(this, "", 32, Ui.INK, true);
         display.setGravity(Gravity.CENTER);
@@ -114,6 +114,13 @@ public class DialActivity extends Activity {
 
     private void dial(String number) {
         if (number == null || number.trim().isEmpty()) return;
+        if (Linkus.ready() && !Linkus.inCall()) {
+            // Call as the driver's Yeastar extension (VoIP). The PBX applies the extension's call permissions.
+            CallActivity.label = number;
+            com.yeastar.linkus.service.call.YlsCallManager.getInstance().makeNewCall(number.trim(), true);
+            App.openCallScreen(this);
+            return;
+        }
         JSONObject req = new JSONObject();
         try { req.put("number", number); } catch (Exception ignored) {}
         Api.run(this, "POST", "/app/dial", req, (res, err) -> {

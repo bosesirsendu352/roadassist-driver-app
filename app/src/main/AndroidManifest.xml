@@ -3,6 +3,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -23,7 +27,14 @@
         <activity android:name=".PairActivity" android:exported="false" />
         <activity android:name=".JobActivity" android:exported="false" />
         <activity android:name=".DialActivity" android:exported="false" />
+        <activity
+            android:name=".CallActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true" />
 
-        <service android:name=".DutyService" android:exported="false" />
+        <service android:name=".DutyService" android:exported="false" android:foregroundServiceType="microphone" />
     </application>
 </manifest>
