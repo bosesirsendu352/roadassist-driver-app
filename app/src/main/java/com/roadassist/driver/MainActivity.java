@@ -62,6 +62,8 @@ public class MainActivity extends Activity {
         top.addView(menu);
         root.addView(top);
 
+        root.addView(Ui.outline(this, "☎  Dialpad · call agent / extension / emergency", v -> startActivity(new Intent(this, DialActivity.class))));
+
         TextView hdr = Ui.text(this, "My jobs", 15, Ui.MUTED, true);
         hdr.setPadding(0, Ui.dp(this, 18), 0, Ui.dp(this, 8));
         root.addView(hdr);

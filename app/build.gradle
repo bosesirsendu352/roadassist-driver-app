@@ -7,8 +7,8 @@ android {
         applicationId "com.roadassist.driver"
         minSdk 26
         targetSdk 33
-        versionCode 3
-        versionName "2.0"
+        versionCode 4
+        versionName "2.1"
         // CRM address the app talks to (driver can change it on the pairing screen)
         buildConfigField "String", "CRM_URL", '"https://roadassist-crm.bosesirsendu355.workers.dev"'
     }
