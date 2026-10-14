@@ -27,11 +27,12 @@ public class DutyService extends Service {
         Notification n = new Notification.Builder(this, App.CH_DUTY)
                 .setSmallIcon(R.drawable.ic_notify)
                 .setContentTitle("On duty")
-                .setContentText("Waiting for jobs from the CRM")
+                .setContentText("Extension " + Prefs.ext(this) + " online · waiting for jobs")
                 .setContentIntent(open)
                 .setOngoing(true)
                 .build();
-        startForeground(1, n);
+        if (android.os.Build.VERSION.SDK_INT >= 29) startForeground(1, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE);
+        else startForeground(1, n);
         h.removeCallbacks(poll);
         h.post(poll);
         return START_STICKY;
@@ -39,7 +40,6 @@ public class DutyService extends Service {
 
     private void check() {
         if (!Prefs.paired(this)) { stopSelf(); return; }
-        if (!Linkus.inCall()) Linkus.ensureLogin(this);
         Api.run(this, "GET", "/app/jobs", null, (res, err) -> {
             if (err != null || res == null) return;
             JSONArray a = res.optJSONArray("jobs");
@@ -64,7 +64,8 @@ public class DutyService extends Service {
     }
 
     private void notifyJob(int id, String title, String text, JSONObject j) {
-        Intent i = new Intent(this, JobActivity.class).putExtra("job", j.toString()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        Intent i = new Intent(this, MainActivity.class).putExtra("jobId", id)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pi = PendingIntent.getActivity(this, id, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification n = new Notification.Builder(this, App.CH_JOBS)
                 .setSmallIcon(R.drawable.ic_notify)
